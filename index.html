@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FHIR 批次驗證介面</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <h1>FHIR 批次驗證介面</h1>
+        <p>
+          可掛載多組 IG 切換驗證（PAS / EMR / CI / mCODE / 癌登 等）。<br />
+          單機建議：<code>java -jar validator_cli.jar server 8080 -ig tw.gov.mohw.nhi.pas#1.0.9 -ig tw.gov.mohw.twcore …</code>
+        </p>
+      </header>
+
+      <section class="panel">
+        <h2>1. 服務設定</h2>
+        <div class="row">
+          <label for="igSelect">實作指引 (IG)</label>
+          <select id="igSelect">
+            <option value="">— 不注入 profile，依 JSON 內 meta.profile —</option>
+          </select>
+          <span class="muted" id="igHint"></span>
+        </div>
+        <div class="row">
+          <label for="endpoint">驗證服務位址</label>
+          <input
+            id="endpoint"
+            type="url"
+            value="/validateResource"
+            placeholder="http://localhost:8080/validateResource 或 /validateResource"
+          />
+          <button id="pingBtn" type="button">測試連線</button>
+        </div>
+        <div id="pingResult" class="muted"></div>
+      </section>
+
+      <section class="panel">
+        <h2>2. 直接貼上 JSON</h2>
+        <textarea
+          id="jsonInput"
+          rows="12"
+          placeholder="貼上單筆 FHIR Resource JSON"
+        ></textarea>
+        <div class="row">
+          <button id="validateTextBtn" type="button">送出驗證</button>
+          <button id="clearTextBtn" type="button" class="secondary">清除</button>
+        </div>
+        <div id="textTiming" class="muted"></div>
+        <div id="textResult" class="result"></div>
+      </section>
+
+      <section class="panel">
+        <h2>3. 上傳 JSON 檔案（可多選）</h2>
+        <input id="fileInput" type="file" accept=".json,application/json" multiple />
+        <div class="row">
+          <button id="validateFilesBtn" type="button">批次驗證</button>
+          <button id="clearFilesBtn" type="button" class="secondary">清除清單</button>
+        </div>
+        <div id="fileList" class="file-list"></div>
+        <div id="filesTiming" class="muted"></div>
+        <div id="filesResult" class="result"></div>
+      </section>
+
+      <footer class="footer">
+        <p class="muted">
+          若畫面顯示 <code>HTTP Validation Service listing on port 8080</code> 即可開始驗證。
+        </p>
+      </footer>
+    </main>
+
+    <script src="ig-config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

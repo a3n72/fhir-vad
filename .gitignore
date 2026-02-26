@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Validator JAR（超過 GitHub 100MB 限制，請自行下載）
+validator_cli.jar
+
+# 術語快取目錄（若用 -txCache 建議不納版控）
+fhir-tx-cache/
+
+# 作業系統
+.DS_Store
+Thumbs.db

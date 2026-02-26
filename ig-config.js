@@ -1,9 +1,10 @@
 /**
  * 實作指引 (IG) 清單與切換設定
- * - id: 前端與 proxy 辨識用（英文小寫）
+ * 選擇某 IG = 以該 IG 模式送出，不修改 JSON；後端依 X-Vad-IG 轉發或單一多 IG 驗證。
+ * - id: 前端與 proxy 辨識用（英文小寫），送出的 X-Vad-IG 表頭
  * - name: 介面顯示名稱
- * - profile: 選填；若填寫，送出驗證時會注入 resource.meta.profile 以便依此 IG 驗證
- * - igPackage: 啟動 validator 時用的 -ig 參數（僅供文件/腳本參考）
+ * - profile: 選填；僅供參考/顯示，不會注入至 JSON
+ * - igPackage: 啟動 validator 時用的 -ig 參數（start_validator.py / 文件用）
  */
 window.VAD_IG_CONFIG = [
   {

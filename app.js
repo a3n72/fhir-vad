@@ -37,32 +37,15 @@ function updateIgHint() {
   const id = igSelect.value;
   const ig = IG_LIST.find((x) => x.id === id);
   if (!id || !ig) {
-    igHint.textContent = "不注入 profile，依資源內 meta.profile 驗證";
+    igHint.textContent = "請選擇要驗證的 IG，送出時不修改 JSON";
     return;
   }
-  if (ig.profile) {
-    igHint.textContent = "送出時將注入 meta.profile: " + ig.profile;
-  } else {
-    igHint.textContent = "此 IG 未設定 profile URL，不注入";
-  }
+  igHint.textContent = "以「" + ig.name + "」模式送出（不修改 JSON，依後端該 IG 驗證）";
 }
 
-/** 依目前選擇的 IG 將 content 轉成要送出的 JSON（必要時注入 meta.profile） */
+/** 切換 IG 模式：不注入 profile，原樣送出。後端依 X-Vad-IG 或單一多 IG 環境驗證。 */
 function preparePayload(content) {
-  const id = igSelect.value;
-  const ig = IG_LIST.find((x) => x.id === id);
-  if (!id || !ig || !ig.profile) return content;
-  try {
-    const obj = JSON.parse(content);
-    if (!obj.meta) obj.meta = {};
-    if (!Array.isArray(obj.meta.profile)) obj.meta.profile = [];
-    if (!obj.meta.profile.includes(ig.profile)) {
-      obj.meta.profile = [ig.profile, ...obj.meta.profile.filter(Boolean)];
-    }
-    return JSON.stringify(obj);
-  } catch (_) {
-    return content;
-  }
+  return content;
 }
 
 function setResult(target, content, isError = false) {

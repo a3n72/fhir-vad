@@ -1,0 +1,12 @@
+.git
+.gitignore
+.dockerignore
+__pycache__
+.venv
+venv
+*.pyc
+fhir-tx-cache
+.DS_Store
+Thumbs.db
+# 映像內會自行下載，不複製本機大檔
+validator_cli.jar

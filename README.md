@@ -34,6 +34,28 @@ python serve_with_proxy.py
 
 ---
 
+## Docker 執行
+
+專案內含 `Dockerfile` 與 `docker-compose.yml`，可一鍵啟動 Validator + 網頁介面：
+
+```bash
+docker compose up -d
+```
+
+- **網頁介面**：http://localhost:5500/
+- **Docker Hub 映像**：`dear7601/fhir-vad:latest`（建置後可 `docker push dear7601/fhir-vad:latest` 推送到你的帳號）
+- **Validator API**：http://localhost:8080/（供介面轉發，無須直接開啟）
+
+映像建置時會從 [HL7 FHIR Core](https://github.com/hapifhir/org.hl7.fhir.core/releases) 下載 `validator_cli.jar`，並依 `ig-config.js` 載入所有 IG。第一次啟動 validator 會較久（下載 IG／術語等）。
+
+若要關閉術語驗證以加快啟動，可修改 `docker-compose.yml` 中 `validator` 的 `command` 為：
+
+```yaml
+command: ["python3", "start_validator.py", "--port", "8080", "-tx", "na"]
+```
+
+---
+
 ## 多組 IG 切換（PAS / EMR / CI / mCODE / 癌登）
 
 介面支援掛載多組 IG，在「實作指引 (IG)」下拉選單切換。

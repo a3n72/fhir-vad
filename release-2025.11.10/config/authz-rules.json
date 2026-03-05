@@ -1,0 +1,75 @@
+{
+  "roles": {
+    "read:Patient": {
+      "read": ["Patient"],
+      "write": [],
+      "delete": []
+    },
+    "write:Patient": {
+      "read": ["Patient"],
+      "write": ["Patient"],
+      "delete": ["Patient"]
+    },
+    "read:Observation": {
+      "read": ["Observation"],
+      "write": [],
+      "delete": []
+    },
+    "write:Observation": {
+      "read": ["Observation"],
+      "write": ["Observation"],
+      "delete": ["Observation"]
+    },
+    "read:Encounter": {
+      "read": ["Encounter"],
+      "write": [],
+      "delete": []
+    },
+    "write:Encounter": {
+      "read": ["Encounter"],
+      "write": ["Encounter"],
+      "delete": ["Encounter"]
+    },
+    "read:Condition": {
+      "read": ["Condition"],
+      "write": [],
+      "delete": []
+    },
+    "write:Condition": {
+      "read": ["Condition"],
+      "write": ["Condition"],
+      "delete": ["Condition"]
+    },
+    "read:MedicationRequest": {
+      "read": ["MedicationRequest"],
+      "write": [],
+      "delete": []
+    },
+    "write:MedicationRequest": {
+      "read": ["MedicationRequest"],
+      "write": ["MedicationRequest"],
+      "delete": ["MedicationRequest"]
+    },
+    "admin": {
+      "read": ["*"],
+      "write": ["*"],
+      "delete": ["*"]
+    },
+    "clinician": {
+      "read": ["Patient", "Observation", "Encounter", "Condition", "MedicationRequest", "DiagnosticReport", "Procedure"],
+      "write": ["Observation", "Encounter", "Condition", "MedicationRequest"],
+      "delete": []
+    },
+    "nurse": {
+      "read": ["Patient", "Observation", "Encounter"],
+      "write": ["Observation"],
+      "delete": []
+    },
+    "pharmacist": {
+      "read": ["Patient", "MedicationRequest", "Medication"],
+      "write": ["MedicationRequest"],
+      "delete": []
+    }
+  },
+  "users": {}
+}

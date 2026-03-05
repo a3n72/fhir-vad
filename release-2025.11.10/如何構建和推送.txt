@@ -1,0 +1,41 @@
+========================================
+Docker 映像構建和推送到 Docker Hub
+========================================
+
+步驟 1: 準備 Docker Hub 帳號
+------------------------------
+1. 確保您有 Docker Hub 帳號
+2. 記下您的 Docker Hub 用戶名
+
+步驟 2: 構建和推送（Windows PowerShell）
+-----------------------------------------
+cd release-2025.11.10
+.\build-and-push.ps1 -DockerHubUsername <您的用戶名> -DockerHubPassword <您的密碼或Access Token>
+
+範例：
+.\build-and-push.ps1 -DockerHubUsername myusername -DockerHubPassword mypassword
+
+步驟 3: 構建和推送（Linux/Mac）
+---------------------------------
+cd release-2025.11.10
+chmod +x build-and-push.sh
+./build-and-push.sh <您的用戶名> <您的密碼或Access Token>
+
+範例：
+./build-and-push.sh myusername mypassword
+
+步驟 4: 驗證推送
+-----------------
+1. 登入 Docker Hub 網站
+2. 檢查您的倉庫中是否有新推送的映像
+3. 映像名稱應該是：<您的用戶名>/hapi-fhir-jpaserver-starter:2025.11.10
+
+步驟 5: 使用推送的映像
+-----------------------
+在 docker-compose.yml 中更新映像名稱：
+  image: <您的用戶名>/hapi-fhir-jpaserver-starter:2025.11.10
+
+詳細說明請參考：BUILD_INSTRUCTIONS.md
+
+========================================
+

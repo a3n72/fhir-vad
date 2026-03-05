@@ -1,0 +1,113 @@
+services:
+  pg-hapi:
+    image: postgres:15
+    container_name: pg-hapi
+    environment:
+      POSTGRES_DB: ${PG_HAPI_DB}
+      POSTGRES_USER: ${PG_HAPI_USER}
+      POSTGRES_PASSWORD: ${PG_HAPI_PASS}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -h 127.0.0.1 -U ${PG_HAPI_USER} -d ${PG_HAPI_DB} || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 45s
+    volumes:
+      - pg_hapi_data:/var/lib/postgresql/data
+    networks: [ fhir-net ]
+
+  hapi:
+    image: dear7601/hapi-fhir-jpaserver-starter:2025.11.10
+    container_name: hapi
+    depends_on:
+      pg-hapi:
+        condition: service_healthy
+    environment:
+      # 讀外部 config
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/app/config/
+
+      # ==== 資料庫連線（使用 Spring Boot 標準環境變數）====
+      # 這些環境變數會覆蓋 application.yaml 中的設定
+      # 注意：docker-compose 會先解析 ${}，然後傳給容器
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pg-hapi:5432/${PG_HAPI_DB:-hapi}
+      SPRING_DATASOURCE_USERNAME: ${PG_HAPI_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${PG_HAPI_PASS:-admin}
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
+      # ==== 強制 JWT ====
+      # 注意：SecurityConfigJwt.java 已設定所有 /fhir/** 端點都需要驗證
+      # 只有 /actuator/health 和 /actuator/info 不需要驗證（用於容器健康檢查）
+      SECURITY_JWT_ENABLED: "true"
+      # Keycloak JWKS 端點（用於驗證 JWT 簽章）
+      # 注意：HAPI 容器在 Docker 網路中，可以使用容器內部地址訪問 Keycloak
+      # 使用 keycloak:8080（容器內部）而不是 localhost:8084（外部）
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${REALM:-fhir-realm}/protocol/openid-connect/certs
+      #（選配）若要驗 audience：
+      SECURITY_JWT_VALIDATE_AUDIENCE: "true"
+      SECURITY_JWT_ACCEPTED_AUDIENCES: "hapi-api,hapi-ui"
+      # 注意：Spring Boot 會自動將環境變數轉換為屬性名稱
+      # SECURITY_JWT_VALIDATE_AUDIENCE -> security.jwt.validate-audience
+      # SECURITY_JWT_ACCEPTED_AUDIENCES -> security.jwt.accepted-audiences
+
+      # ==== 授權規則檔（HAPI 內部 AuthorizationInterceptor 會載入）====
+      AUTHZ_RULES_PATH: "/app/config/authz-rules.json"
+      PG_HAPI_DB: ${PG_HAPI_DB:-hapi}
+      PG_HAPI_USER: ${PG_HAPI_USER:-admin}
+      PG_HAPI_PASS: ${PG_HAPI_PASS:-admin}
+    volumes:
+      - ./config:/app/config:ro
+    ports:
+      - "8080:8080"  # 直接對外，API 走 http://localhost:8080/fhir（需要 Keycloak Token）
+    networks: [ fhir-net ]
+
+  pg-keycloak:
+    image: postgres:15-alpine
+    container_name: pg-keycloak
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PG_KC_DB}
+      POSTGRES_USER: ${PG_KC_USER}
+      POSTGRES_PASSWORD: ${PG_KC_PASS}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -h 127.0.0.1 -U ${PG_KC_USER} -d ${PG_KC_DB} || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 45s
+    volumes:
+      - pg_keycloak_data:/var/lib/postgresql/data
+    networks: [ fhir-net ]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    container_name: keycloak
+    restart: unless-stopped
+    depends_on:
+      pg-keycloak:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_USERNAME: ${PG_KC_USER}
+      KC_DB_PASSWORD: ${PG_KC_PASS}
+      KC_DB_URL: jdbc:postgresql://pg-keycloak:5432/${PG_KC_DB}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+
+      # ★ 為了讓瀏覽器看的 issuer 固定，可用 host.docker.internal
+      KC_HOSTNAME: host.docker.internal
+      KC_HOSTNAME_PORT: "${KC_EXTERNAL_PORT}"
+      KC_HOSTNAME_STRICT: "false"
+    command: ["start-dev"]
+    ports:
+      - "${KC_EXTERNAL_PORT}:8080"          # → http://localhost:8080
+    networks: [ fhir-net ]
+
+volumes:
+  pg_hapi_data:
+  pg_keycloak_data:
+  fhir_pkg_cache:
+  lucene_index:
+networks:
+  fhir-net:

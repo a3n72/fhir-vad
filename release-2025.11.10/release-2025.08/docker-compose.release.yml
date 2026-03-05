@@ -1,0 +1,125 @@
+name: fhir-stack
+
+services:
+  pg-hapi:
+    image: postgres:15
+    container_name: pg-hapi
+    environment:
+      POSTGRES_DB: ${PG_HAPI_DB}
+      POSTGRES_USER: ${PG_HAPI_USER}
+      POSTGRES_PASSWORD: ${PG_HAPI_PASS}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -h 127.0.0.1 -U ${PG_HAPI_USER} -d ${PG_HAPI_DB} || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 45s
+    volumes:
+      - pg_hapi_data:/var/lib/postgresql/data
+    networks: [ fhir-net ]
+
+  hapi:
+    image: docker.io/dear7601/hapi-fhir:${TAG:-9rise-2025.08}
+    container_name: hapi
+    depends_on:
+      pg-hapi:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pg-hapi:5432/${PG_HAPI_DB}
+      SPRING_DATASOURCE_USERNAME: ${PG_HAPI_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PG_HAPI_PASS}
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/app/config/
+      SECURITY_JWT_ENABLED: "true"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${JWK_SET_URI}
+    volumes:
+      - ./config:/app/config:ro
+      - fhir_pkg_cache:/root/.fhir/packages
+    expose: ["8080"]
+    networks: [ fhir-net ]
+
+  auth-injector:
+    image: docker.io/dear7601/nginx-oidc:${TAG:-9rise-2025.08}
+    container_name: auth-injector
+    depends_on: [ hapi, keycloak ]
+    environment:
+      CLIENT_ID: ${AI_CLIENT_ID}
+      CLIENT_SECRET: ${AI_CLIENT_SECRET}
+      KC_TOKEN_URL: ${KC_BASE}/realms/${REALM}/protocol/openid-connect/token
+    ports:
+      - "${HAPI_EXT_PORT:-8081}:8080"
+    networks: [ fhir-net ]
+
+  oauth2-proxy:
+    image: docker.io/dear7601/oauth2-proxy:${TAG:-9rise-2025.08}
+    container_name: oauth2-proxy
+    restart: unless-stopped
+    depends_on: [ hapi, keycloak ]
+    environment:
+      OAUTH2_PROXY_PROVIDER: keycloak-oidc
+      # 外部可達的 Keycloak（走 443）
+      OAUTH2_PROXY_OIDC_ISSUER_URL:  ${PUBLIC_BASE}/realms/${REALM}
+      OAUTH2_PROXY_LOGIN_URL:        ${PUBLIC_BASE}/realms/${REALM}/protocol/openid-connect/auth
+      # 內部服務
+      OAUTH2_PROXY_REDEEM_URL:       ${KC_BASE}/realms/${REALM}/protocol/openid-connect/token
+      OAUTH2_PROXY_OIDC_JWKS_URL:    ${KC_BASE}/realms/${REALM}/protocol/openid-connect/certs
+      OAUTH2_PROXY_CLIENT_ID:        ${OAUTH2_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET:    ${OAUTH2_CLIENT_SECRET}
+      OAUTH2_PROXY_REDIRECT_URL:     ${PUBLIC_BASE}/hapi-fhir/oauth2/callback
+      OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS: "true"
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD:  S256
+      OAUTH2_PROXY_COOKIE_SECRET:    ${OAUTH2_COOKIE_SECRET}
+      OAUTH2_PROXY_COOKIE_SECURE:    "${COOKIE_SECURE:-true}"
+      OAUTH2_PROXY_SCOPE: "openid profile email"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN:        "true"
+      OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "true"
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
+      # 讓它綁在容器 0.0.0.0:4180（避免命令列參數被版號差異誤判）
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      # 多一點啟動期資訊
+      OAUTH2_PROXY_STANDARD_LOGGING: "true"
+      OAUTH2_PROXY_SILENCE_PING_LOGGING: "false"
+    ports:
+      - "8083:4180"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4180/ping || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [ fhir-net ]
+
+  keycloak:
+    image: docker.io/dear7601/keycloak:${TAG:-9rise-2025.08}
+    container_name: keycloak
+    restart: unless-stopped
+    depends_on:
+      pg-keycloak:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_USERNAME: ${PG_KC_USER}
+      KC_DB_PASSWORD: ${PG_KC_PASS}
+      KC_DB_URL: jdbc:postgresql://pg-keycloak:5432/${PG_KC_DB}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+      KC_FRONTEND_URL:  ${PUBLIC_BASE}
+      KC_HOSTNAME:      ${PUBLIC_HOST}
+      KC_HOSTNAME_PORT: "${KC_EXTERNAL_PORT}"
+      KC_HOSTNAME_STRICT: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "true"
+    command: ["start-dev"]
+    # 對外讓 NGINX 反代連到 127.0.0.1:8080（不要占用 443）
+    ports:
+      - "${PUBLISH_KC_PORT:-8080}:8080"
+    networks: [ fhir-net ]
+
+volumes:
+  pg_hapi_data:
+  pg_keycloak_data:
+  fhir_pkg_cache:
+
+networks:
+  fhir-net:

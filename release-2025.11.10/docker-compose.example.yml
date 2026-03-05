@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  pg-hapi:
+    image: postgres:15
+    container_name: pg-hapi
+    environment:
+      POSTGRES_DB: ${PG_HAPI_DB:-hapi}
+      POSTGRES_USER: ${PG_HAPI_USER:-admin}
+      POSTGRES_PASSWORD: ${PG_HAPI_PASS:-admin}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -h 127.0.0.1 -U ${PG_HAPI_USER:-admin} -d ${PG_HAPI_DB:-hapi} || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 45s
+    volumes:
+      - pg_hapi_data:/var/lib/postgresql/data
+    networks: [ fhir-net ]
+
+  hapi:
+    image: <your-dockerhub-username>/hapi-fhir-jpaserver-starter:2025.11.10
+    container_name: hapi
+    depends_on:
+      pg-hapi:
+        condition: service_healthy
+    environment:
+      # 讀外部 config
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/app/config/
+
+      # ==== 資料庫連線 ====
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pg-hapi:5432/${PG_HAPI_DB:-hapi}
+      SPRING_DATASOURCE_USERNAME: ${PG_HAPI_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${PG_HAPI_PASS:-admin}
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
+
+      # ==== JWT 驗證 ====
+      SECURITY_JWT_ENABLED: "true"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${REALM:-fhir-realm}/protocol/openid-connect/certs
+      SECURITY_JWT_VALIDATE_AUDIENCE: "true"
+      SECURITY_JWT_ACCEPTED_AUDIENCES: "hapi-api,hapi-ui"
+
+      # ==== 授權規則 ====
+      AUTHZ_RULES_PATH: /app/config/authz-rules.json
+
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config:ro
+    networks: [ fhir-net ]
+    restart: unless-stopped
+
+volumes:
+  pg_hapi_data:
+
+networks:
+  fhir-net:
+    driver: bridge
+

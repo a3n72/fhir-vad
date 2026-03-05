@@ -1,0 +1,85 @@
+server:
+  port: 8080
+
+spring:
+  main:
+    allow-circular-references: true
+  datasource:
+    url: jdbc:postgresql://pg-hapi:5432/${PG_HAPI_DB:hapi}
+    username: ${PG_HAPI_USER:admin}
+    password: ${PG_HAPI_PASS:admin}
+    driverClassName: org.postgresql.Driver
+
+hapi:
+  fhir:
+    fhir_version: R4
+    openapi_enabled: true
+
+    # 對外宣告的 base（給 CapabilityStatement 等）—內部直連 8081
+    server_address: "http://localhost:${HAPI_EXT_PORT:8081}/fhir"
+
+    implementationguides:
+      tw_core:
+        name: tw.gov.mohw.twcore
+        version: 0.3.2
+        installMode: STORE_AND_INSTALL   # 想加速啟動可暫時改 STORE
+        fetchDependencies: true
+      # hl7_terminology:
+      #   name: hl7.terminology.r4
+      #   version: 6.5.0
+      #   installMode: STORE_AND_INSTALL
+      #   fetchDependencies: true
+      emr:
+        name: tw.gov.mohw.emr
+        version: 0.1.0         
+        installMode: STORE_AND_INSTALL
+        fetchDependencies: true  
+      # fhir_core:
+      #   name: hl7.fhir.r4.core
+      #   version: 4.0.1
+      #   installMode: STORE_AND_INSTALL
+      #   fetchDependencies: true  
+    validation:
+      requests_enabled: true
+      responses_enabled: false
+
+    mdm_enabled: false
+    bulk_export_enabled: false
+    bulk_import_enabled: false
+    search_index_full_text_enabled: false
+    advanced_lucene_indexing: false
+    narrative_enabled: false
+    terminology:
+      terminology_uploader_enabled: true
+    cors:
+      allow_Credentials: true
+      allowed_origin: ["*"]
+    logical_urls:
+      - http://terminology.hl7.org/*
+      - https://terminology.hl7.org/*
+      - http://snomed.info/*
+      - https://snomed.info/*
+      - http://unitsofmeasure.org/*
+      - https://unitsofmeasure.org/*
+      - http://loinc.org/*
+      - https://loinc.org/*
+
+    # HAPI 內建測試 UI 兩個目標：
+    #  - Local (unprotected)：容器 DNS，走 8081（不驗）
+    #  - Local via Gateway (protected)：走 8083（會跳 Keycloak 登入）
+    tester:
+      home:
+        name: Local (unprotected)
+        server_address: "http://auth-injector:8080/fhir"
+        refuse_to_fetch_third_party_urls: false
+        fhir_version: R4
+      protected:
+        name: Local via Gateway (protected)
+        server_address: "http://localhost:8083/fhir"
+        refuse_to_fetch_third_party_urls: false
+        fhir_version: R4
+      global:
+        name: Public HAPI
+        server_address: "http://hapi.fhir.org/baseR4"
+        refuse_to_fetch_third_party_urls: false
+        fhir_version: R4

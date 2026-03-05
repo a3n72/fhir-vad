@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Scripts (not needed in image)
+*.ps1
+*.sh
+!build-and-push.*
+
+# Test files
+test-*.ps1
+test-*.sh
+
+# Release folders
+release-*/
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+

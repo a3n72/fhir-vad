@@ -1,0 +1,82 @@
+server:
+  port: 8080
+  tomcat:
+    # allow | as a separator in the URL
+    relaxed-query-chars: "|"
+
+spring:
+  main:
+    allow-circular-references: true
+  datasource:
+    # 注意：這些設定會被 docker-compose.yml 中的 SPRING_DATASOURCE_* 環境變數覆蓋
+    url: jdbc:postgresql://pg-hapi:5432/${PG_HAPI_DB:hapi}
+    username: ${PG_HAPI_USER:admin}
+    password: ${PG_HAPI_PASS:admin}
+    driverClassName: org.postgresql.Driver
+    hikari:
+      maximumPoolSize: 20
+      connectionTimeout: 10000  # 10秒連線超時
+      initializationFailTimeout: 10000  # 10秒初始化超時（快速失敗以便快速重試）
+      validationTimeout: 3000  # 3秒驗證超時
+      leakDetectionThreshold: 60000
+  jpa:
+    properties:
+      hibernate.dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+      hibernate.search.enabled: true
+
+hapi:
+  fhir:
+    fhir_version: R4
+    openapi_enabled: true
+
+    # 本輪固定直打 8080（Bearer Token 驗證）
+    server_address: "http://localhost:8080/fhir"
+
+    # === IG 全數停用（重要）===
+    ig_runtime_upload_enabled: false
+    # 注意：這裡不應再出現任何 implementationguides: 區塊
+
+    # === 授權攔截器配置 ===
+    # 確保 FhirAuthConfig 被 Spring 掃描到
+    custom-bean-packages: ca.uhn.fhir.jpa.starter.security
+    # 強制註冊授權攔截器（HAPI 會先嘗試從 Spring 獲取 Bean，取不到就用反射創建）
+    # custom-interceptor-classes: ca.uhn.fhir.jpa.starter.security.ScopeRoleAuthzInterceptor
+    # 注意：攔截器現在通過 Spring Bean 自動註冊（FhirAuthConfig），不需要在這裡配置
+
+    validation:
+      requests_enabled: true
+      responses_enabled: false
+
+    mdm_enabled: false
+    bulk_export_enabled: false
+    bulk_import_enabled: false
+    search_index_full_text_enabled: true
+    advanced_lucene_indexing: true
+    narrative_enabled: false
+
+    cors:
+      allow_Credentials: true
+      allowed_origin: ["*"]
+
+    logical_urls:
+      - http://terminology.hl7.org/*
+      - https://terminology.hl7.org/*
+      - http://snomed.info/*
+      - https://snomed.info/*
+      - http://unitsofmeasure.org/*
+      - https://unitsofmeasure.org/*
+      - http://loinc.org/*
+      - https://loinc.org/*
+
+    # 測試器保留一個目標，避免誤導（UI 不會自動帶 Token，建議用 Postman/curl）
+    tester:
+      home:
+        name: Local (API requires Bearer token)
+        server_address: "http://localhost:8080/fhir"
+        refuse_to_fetch_third_party_urls: false
+        fhir_version: R4
+      global:
+        name: Public HAPI
+        server_address: "http://hapi.fhir.org/baseR4"
+        refuse_to_fetch_third_party_urls: false
+        fhir_version: R4

@@ -1,0 +1,6 @@
+HAPI FHIR JPA Server Starter
+Version: 2025.11.10
+Build Date: 2025-11-10
+HAPI FHIR Version: 8.2.0
+Java Version: 17
+

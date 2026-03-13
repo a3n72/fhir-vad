@@ -1,6 +1,7 @@
 # FHIR VAD：Validator + 網頁介面
 # 啟動：docker compose up -d
 # 介面：http://localhost:5500/
+# 若 8080 被占用，可改下方 ports 為 "主機埠:8080"，例如 "8090:8080"
 # 推送到 Docker Hub：docker compose build && docker push dear7601/fhir-vad:latest
 
 services:
@@ -9,12 +10,14 @@ services:
     image: dear7601/fhir-vad:latest
     command: ["python3", "start_validator.py", "--port", "8080"]
     ports:
-      - "8080:8080"
+      - "8080:8080"   # 若 8080 被占用可改為 "8090:8080" 等
+    # 本地 IG Package：將解壓後的 package 放於 ./igs/<名稱>/ 下，並在 ig-config.js 設 igPackage 為 "/app/igs/<名稱>/package"
+    volumes:
+      - ./igs:/app/igs
+      - ./ig-config.js:/app/ig-config.js
     # 關閉術語驗證可加快啟動並避免網路依賴（可選）：
     # command: ["python3", "start_validator.py", "--port", "8080", "-tx", "na"]
-    # 共用術語快取目錄（可選）：
-    # volumes:
-    #   - fhir-tx-cache:/app/fhir-tx-cache
+    # 共用術語快取（可選）：於上方 volumes 再加一行 " - fhir-tx-cache:/app/fhir-tx-cache"，並改 command 為：
     # command: ["python3", "start_validator.py", "--port", "8080", "--txCache", "/app/fhir-tx-cache"]
 
   web:

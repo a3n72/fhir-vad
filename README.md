@@ -56,6 +56,77 @@ command: ["python3", "start_validator.py", "--port", "8080", "-tx", "na"]
 
 ---
 
+## Docker 部署除錯（非本機／遠端機器）
+
+若是在**另一台機器**（伺服器、他人電腦）用 Docker Compose 跑 VAD，出現 validator 一直重啟、web 起不來時，請在**該台機器**上依下列步驟處理。
+
+### 1. 看 validator 為什麼掛掉
+
+在該台機器的專案目錄下執行：
+
+```bash
+docker compose logs validator --tail 100
+```
+
+或只看最近一次錯誤：
+
+```bash
+docker compose logs validator 2>&1 | tail -80
+```
+
+依錯誤訊息判斷：
+- **記憶體不足 (OOM / OutOfMemoryError)** → 見下方「2. 加大記憶體」
+- **術語伺服器連線逾時、網路錯誤** → 見下方「3. 關閉術語驗證」
+- **埠被占用** → 見下方「4. 改埠」
+
+### 2. 加大記憶體（建議至少 2G heap）
+
+在 `docker-compose.yml` 的 `validator` 底下加 `environment`（若已有 `environment` 就合併進去）：
+
+```yaml
+  validator:
+    build: .
+    image: dear7601/fhir-vad:latest
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx2g -Xms512m"
+    command: ["python3", "start_validator.py", "--port", "8080"]
+    ports:
+      - "8080:8080"
+```
+
+若該機器實體記憶體很小，可改為 `-Xmx1g`。
+
+### 3. 關閉術語驗證（建議先試，可避免網路依賴）
+
+把 `validator` 的 `command` 改成帶 `-tx na`：
+
+```yaml
+command: ["python3", "start_validator.py", "--port", "8080", "-tx", "na"]
+```
+
+改完後：
+
+```bash
+docker compose down
+docker compose up -d
+docker compose logs -f validator
+```
+
+看到 `HTTP Validation Service listing on port 8080` 或類似成功訊息再離開（Ctrl+C）。之後介面應可正常使用。
+
+### 4. 若 8080 被占用
+
+把 `validator` 的 `ports` 改成「主機埠:8080」，例如改用 8090：
+
+```yaml
+ports:
+  - "8090:8080"
+```
+
+容器內仍用 8080，`web` 的 `VAD_BACKEND` 不需改。改完後重啟：`docker compose down && docker compose up -d`。
+
+---
+
 ## 多組 IG 切換（PAS / EMR / CI / mCODE / 癌登）
 
 介面支援掛載多組 IG，在「實作指引 (IG)」下拉選單切換。

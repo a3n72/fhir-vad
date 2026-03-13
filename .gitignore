@@ -10,6 +10,9 @@ validator_cli.jar
 # 術語快取目錄（若用 -txCache 建議不納版控）
 fhir-tx-cache/
 
+# 本地 IG package 內容（體積大，請依 igs/README.md 自行解壓）
+igs/*/package/
+
 # 作業系統
 .DS_Store
 Thumbs.db

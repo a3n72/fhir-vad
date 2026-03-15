@@ -24,12 +24,6 @@ window.VAD_IG_CONFIG = [
     igPackage: "./igs/pas-1.1.1/package",
   },
   {
-    id: "pas121",
-    name: "PAS 1.2.1（健保申報）",
-    profile: "https://twcore.mohw.gov.tw/ig/twnhi/StructureDefinition/PASPatient",
-    igPackage: "./igs/pas-1.2.1/package",
-  },
-  {
     id: "emr",
     name: "EMR（電子病歷）",
     profile: "",

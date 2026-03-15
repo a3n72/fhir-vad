@@ -28,6 +28,12 @@ services:
       VAD_BACKEND: http://validator:8080/validateResource
     ports:
       - "5500:5500"
+    volumes:
+      # 掛載靜態檔，使介面載入最新的 ig-config.js（可選不同版本 PAS 等）
+      - ./ig-config.js:/app/ig-config.js
+      - ./index.html:/app/index.html
+      - ./app.js:/app/app.js
+      - ./styles.css:/app/styles.css
     depends_on:
       - validator
 

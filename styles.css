@@ -110,6 +110,163 @@ button:disabled {
   white-space: pre-wrap;
 }
 
+.result.result-rich {
+  font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+  font-size: 14px;
+  white-space: normal;
+}
+
+.outcome-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.outcome-card + .outcome-card {
+  margin-top: 14px;
+}
+
+.outcome-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.outcome-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.outcome-subtitle {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.outcome-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.severity-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.severity-pill.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.severity-pill.error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.severity-pill.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.severity-pill.information {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.outcome-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.severity-group {
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.severity-group.error {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.severity-group.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.severity-group.information {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.severity-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.outcome-issue {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.outcome-issue + .outcome-issue {
+  margin-top: 8px;
+}
+
+.outcome-issue-main {
+  line-height: 1.5;
+  color: #111827;
+}
+
+.outcome-issue-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  word-break: break-word;
+}
+
+.outcome-empty {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.outcome-raw {
+  margin-top: 14px;
+}
+
+.outcome-raw summary {
+  cursor: pointer;
+  color: #374151;
+  font-weight: 600;
+}
+
+.outcome-raw pre,
+.outcome-plain {
+  margin: 10px 0 0;
+  padding: 12px;
+  background: #111827;
+  color: #e5e7eb;
+  border-radius: 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 12px;
+}
+
 .file-list {
   margin-top: 12px;
   font-size: 13px;

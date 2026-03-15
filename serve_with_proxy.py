@@ -2,6 +2,7 @@ import http.server
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 # 單一後端（預設）
 BACKEND_URL = os.environ.get(
@@ -17,6 +18,15 @@ def _get_backend_for_ig(ig_id: str):
 
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
+    def guess_type(self, path):
+        content_type = super().guess_type(path)
+        suffix = Path(path).suffix.lower()
+        if suffix == ".js":
+            return "application/javascript; charset=utf-8"
+        if suffix in {".html", ".css", ".json"}:
+            return f"{content_type}; charset=utf-8"
+        return content_type
+
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header(
@@ -25,6 +35,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header(
             "Access-Control-Allow-Methods", "POST, OPTIONS"
         )
+        # 開發時避免瀏覽器持續使用舊版靜態檔。
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         super().end_headers()
 
     def do_OPTIONS(self):

@@ -48,8 +48,22 @@ function preparePayload(content) {
   return content;
 }
 
-function setResult(target, content, isError = false) {
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (char) => {
+    const map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return map[char];
+  });
+}
+
+function setResultText(target, content, isError = false) {
   target.textContent = content;
+  target.classList.remove("result-rich");
   if (isError) {
     target.style.borderColor = "#ef4444";
     target.style.background = "#fef2f2";
@@ -66,6 +80,176 @@ function formatJson(text) {
   } catch (error) {
     return text;
   }
+}
+
+function tryParseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return null;
+  }
+}
+
+function normalizeSeverity(severity) {
+  if (severity === "fatal" || severity === "error") return "error";
+  if (severity === "warning") return "warning";
+  return "information";
+}
+
+function getIssueText(issue) {
+  return (
+    issue?.details?.text ||
+    issue?.diagnostics ||
+    issue?.details?.coding?.[0]?.display ||
+    "未提供說明"
+  );
+}
+
+function renderIssueList(issues) {
+  if (issues.length === 0) {
+    return '<div class="outcome-empty">無</div>';
+  }
+
+  return issues
+    .map((issue) => {
+      const paths = [...(issue.expression || []), ...(issue.location || [])];
+      const pathText = paths.length ? paths.join(", ") : "";
+      const details = [];
+      if (issue.code) details.push(`代碼：${issue.code}`);
+      if (pathText) details.push(`位置：${pathText}`);
+      if (issue.source) details.push(`來源：${issue.source}`);
+      return `
+        <div class="outcome-issue">
+          <div class="outcome-issue-main">${escapeHtml(getIssueText(issue))}</div>
+          ${
+            details.length
+              ? `<div class="outcome-issue-meta">${escapeHtml(details.join(" ｜ "))}</div>`
+              : ""
+          }
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function buildOutcomeHtml(title, result, parsed) {
+  const issues = Array.isArray(parsed?.issue) ? parsed.issue : [];
+  const grouped = {
+    error: [],
+    warning: [],
+    information: [],
+  };
+
+  issues.forEach((issue) => {
+    grouped[normalizeSeverity(issue.severity)].push(issue);
+  });
+
+  const totalIssues = issues.length;
+  const hasProblem = grouped.error.length > 0 || !result.ok;
+  const formattedJson = escapeHtml(JSON.stringify(parsed, null, 2));
+
+  return `
+    <section class="outcome-card">
+      <div class="outcome-header">
+        <div>
+          <div class="outcome-title">${escapeHtml(title)}</div>
+          <div class="outcome-subtitle">HTTP ${result.status}${
+            result.elapsedMs == null ? "" : ` ｜ ${result.elapsedMs} ms`
+          } ｜ 共 ${totalIssues} 筆 issue</div>
+        </div>
+        <div class="outcome-badges">
+          <span class="severity-pill ${hasProblem ? "error" : "success"}">
+            ${hasProblem ? "需處理" : "通過"}
+          </span>
+          <span class="severity-pill error">Error ${grouped.error.length}</span>
+          <span class="severity-pill warning">Warning ${grouped.warning.length}</span>
+          <span class="severity-pill information">Info ${grouped.information.length}</span>
+        </div>
+      </div>
+      <div class="outcome-groups">
+        <div class="severity-group error">
+          <div class="severity-group-title">Error / Fatal</div>
+          ${renderIssueList(grouped.error)}
+        </div>
+        <div class="severity-group warning">
+          <div class="severity-group-title">Warning</div>
+          ${renderIssueList(grouped.warning)}
+        </div>
+        <div class="severity-group information">
+          <div class="severity-group-title">Information</div>
+          ${renderIssueList(grouped.information)}
+        </div>
+      </div>
+      <details class="outcome-raw">
+        <summary>原始 OperationOutcome JSON</summary>
+        <pre>${formattedJson}</pre>
+      </details>
+    </section>
+  `;
+}
+
+function renderPlainResult(target, title, result) {
+  target.classList.add("result-rich");
+  target.style.borderColor = result.ok ? "#e5e7eb" : "#ef4444";
+  target.style.background = result.ok ? "#f9fafb" : "#fef2f2";
+  target.innerHTML = `
+    <section class="outcome-card">
+      <div class="outcome-header">
+        <div>
+          <div class="outcome-title">${escapeHtml(title)}</div>
+          <div class="outcome-subtitle">HTTP ${escapeHtml(result.status)}${
+            result.elapsedMs == null ? "" : ` ｜ ${result.elapsedMs} ms`
+          }</div>
+        </div>
+      </div>
+      <pre class="outcome-plain">${escapeHtml(formatJson(result.body))}</pre>
+    </section>
+  `;
+}
+
+function renderValidationResult(target, title, result) {
+  const parsed = tryParseJson(result.body);
+  if (parsed?.resourceType === "OperationOutcome") {
+    target.classList.add("result-rich");
+    const hasProblem =
+      !result.ok ||
+      (Array.isArray(parsed.issue) &&
+        parsed.issue.some((issue) => normalizeSeverity(issue.severity) === "error"));
+    target.style.borderColor = hasProblem ? "#ef4444" : "#e5e7eb";
+    target.style.background = hasProblem ? "#fff7f7" : "#f8fafc";
+    target.innerHTML = buildOutcomeHtml(title, result, parsed);
+    return;
+  }
+
+  renderPlainResult(target, title, result);
+}
+
+function renderBatchResults(target, results) {
+  const hasError = results.some((item) => !item.ok);
+  target.classList.add("result-rich");
+  target.style.borderColor = hasError ? "#ef4444" : "#e5e7eb";
+  target.style.background = hasError ? "#fff7f7" : "#f8fafc";
+  target.innerHTML = results
+    .map((item) => {
+      const parsed = tryParseJson(item.body);
+      if (parsed?.resourceType === "OperationOutcome") {
+        return buildOutcomeHtml(item.name, item, parsed);
+      }
+      return `
+        <section class="outcome-card">
+          <div class="outcome-header">
+            <div>
+              <div class="outcome-title">${escapeHtml(item.name)}</div>
+              <div class="outcome-subtitle">HTTP ${escapeHtml(item.status)}${
+                item.elapsedMs == null ? "" : ` ｜ ${item.elapsedMs} ms`
+              }</div>
+            </div>
+          </div>
+          <pre class="outcome-plain">${escapeHtml(formatJson(item.body))}</pre>
+        </section>
+      `;
+    })
+    .join("");
 }
 
 async function sendValidation(payload) {
@@ -112,25 +296,20 @@ pingBtn.addEventListener("click", async () => {
 validateTextBtn.addEventListener("click", async () => {
   const content = jsonInput.value.trim();
   if (!content) {
-    setResult(textResult, "請貼上 JSON 內容後再送出", true);
+    setResultText(textResult, "請貼上 JSON 內容後再送出", true);
     return;
   }
 
   validateTextBtn.disabled = true;
-  setResult(textResult, "送出中...");
+  setResultText(textResult, "送出中...");
   textTiming.textContent = "";
   try {
     const payload = preparePayload(content);
     const result = await sendValidation(payload);
-    const output = [
-      `HTTP ${result.status}`,
-      "",
-      formatJson(result.body),
-    ].join("\n");
-    setResult(textResult, output, !result.ok);
+    renderValidationResult(textResult, "本次驗證結果", result);
     textTiming.textContent = `回應時間：${result.elapsedMs} ms`;
   } catch (error) {
-    setResult(textResult, `驗證失敗：${error.message}`, true);
+    setResultText(textResult, `驗證失敗：${error.message}`, true);
     textTiming.textContent = "";
   } finally {
     validateTextBtn.disabled = false;
@@ -139,7 +318,7 @@ validateTextBtn.addEventListener("click", async () => {
 
 clearTextBtn.addEventListener("click", () => {
   jsonInput.value = "";
-  setResult(textResult, "");
+  setResultText(textResult, "");
   textTiming.textContent = "";
 });
 
@@ -152,7 +331,7 @@ clearFilesBtn.addEventListener("click", () => {
   fileInput.value = "";
   state.files = [];
   renderFileList();
-  setResult(filesResult, "");
+  setResultText(filesResult, "");
   filesTiming.textContent = "";
 });
 
@@ -173,12 +352,12 @@ function renderFileList() {
 
 validateFilesBtn.addEventListener("click", async () => {
   if (state.files.length === 0) {
-    setResult(filesResult, "請選擇至少一個 JSON 檔案", true);
+    setResultText(filesResult, "請選擇至少一個 JSON 檔案", true);
     return;
   }
 
   validateFilesBtn.disabled = true;
-  setResult(filesResult, "批次送出中...");
+  setResultText(filesResult, "批次送出中...");
   filesTiming.textContent = "";
 
   const batchStartedAt = performance.now();
@@ -206,17 +385,7 @@ validateFilesBtn.addEventListener("click", async () => {
     }
   }
 
-  const output = results
-    .map((item) => {
-      const timingText = item.elapsedMs === null ? "" : `, ${item.elapsedMs} ms`;
-      const header = `[${item.ok ? "OK" : "FAIL"}] ${item.name} (HTTP ${item.status}${timingText})`;
-      const body = formatJson(item.body);
-      return `${header}\n${body}`;
-    })
-    .join("\n\n-------------------------\n\n");
-
-  const hasError = results.some((item) => !item.ok);
-  setResult(filesResult, output, hasError);
+  renderBatchResults(filesResult, results);
   const batchElapsed = Math.round(performance.now() - batchStartedAt);
   filesTiming.textContent = `批次總耗時：${batchElapsed} ms`;
   validateFilesBtn.disabled = false;

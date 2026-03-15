@@ -19,9 +19,23 @@ from typing import Optional
 def read_ig_packages(config_path: Path) -> list[str]:
     """從 ig-config.js 讀取所有 igPackage 值（依出現順序）。"""
     text = config_path.read_text(encoding="utf-8")
-    # 匹配 igPackage: "xxx" 或 igPackage: 'xxx'
     pattern = re.compile(r'igPackage:\s*["\']([^"\']+)["\']', re.IGNORECASE)
-    return pattern.findall(text)
+    packages: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        # 忽略 JS 註解行，避免把註解掉的 igPackage 也載入。
+        if (
+            not stripped
+            or stripped.startswith("//")
+            or stripped.startswith("/*")
+            or stripped.startswith("*")
+            or stripped.startswith("*/")
+        ):
+            continue
+        match = pattern.search(line)
+        if match:
+            packages.append(match.group(1))
+    return packages
 
 
 def build_command(
